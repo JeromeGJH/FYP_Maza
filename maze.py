@@ -3,10 +3,9 @@ import numpy as np
 from agent import *
 
 
-
-
 class Maze:
-    def __init__(self, num, learning_rate=0.1, gamma=0.9, memory_size=5000, epsilon = 0.1, shape = (3, 8), AgentP = [], GoalP = [], WallP = []):
+    def __init__(self, num, learning_rate=0.1, gamma=0.9, memory_size=5000, epsilon=0.1, shape=(3, 8), AgentP=[],
+                 GoalP=[], WallP=[]):
         self.env = np.array(shape[0], shape[1])
         self.shape = shape
         self.num_agents = num
@@ -47,39 +46,39 @@ class Maze:
             goal = Maze.coordinateToIndex(self.gp[i])
             self.env[goal[0]][goal[1]] = 1
 
-    def initWall(self):# build wall in the maze to verify algorithm(not included in the paper)
+    def initWall(self):  # build wall in the maze to verify algorithm(not included in the paper)
         for i in range(len(self.wp)):
             p = Maze.coordinateToIndex(self.wp[i])
             self.env[p[0]][p[1]] = -1
-            
+
     # get the information of position around the agent没写完
     def getPositionInfo(self, index, direction):
         pInfo = np.array([])
         if 0 in direction:
             np.append(pInfo, self.env[index[0]][index[1]])
         if 1 in direction:
-            np.append(pInfo, self.env[index[0]][index[1]-1])
+            np.append(pInfo, self.env[index[0]][index[1] - 1])
         if 2 in direction:
-            np.append(pInfo, self.env[index[0]-1][index[1]])
+            np.append(pInfo, self.env[index[0] - 1][index[1]])
         if 3 in direction:
-            np.append(pInfo, self.env[index[0]][index[1]+1])
+            np.append(pInfo, self.env[index[0]][index[1] + 1])
         if 4 in direction:
-            np.append(pInfo, self.env[index[0]+1][index[1]])
+            np.append(pInfo, self.env[index[0] + 1][index[1]])
         return pInfo
-    
+
     # get the Q-value around the agent
     def getQvalueInfo(self, name, index, direction):
         value = np.array([])
         if 0 in direction:
             np.append(value, np.max(self.Q_table[name][index[0]][index[1]]))
         if 1 in direction:
-            np.append(value, np.max(self.Q_table[name][index[0]][index[1]-1]))
+            np.append(value, np.max(self.Q_table[name][index[0]][index[1] - 1]))
         if 2 in direction:
-            np.append(value, np.max(self.Q_table[name][index[0]-1][index[1]]))
+            np.append(value, np.max(self.Q_table[name][index[0] - 1][index[1]]))
         if 3 in direction:
-            np.append(value, np.max(self.Q_table[name][index[0]][index[1]+1]))
+            np.append(value, np.max(self.Q_table[name][index[0]][index[1] + 1]))
         if 4 in direction:
-            np.append(value, np.max(self.Q_table[name][index[0]+1][index[1]]))
+            np.append(value, np.max(self.Q_table[name][index[0] + 1][index[1]]))
         return value
 
     # agent is on the border
@@ -109,44 +108,49 @@ class Maze:
                 f_d = [0, 1, 2, 3, 4]
         return f_d
 
-
     # get the feasible action with the maximun payoff
     def getMaxPayoffMove(self, a):
         p = a.position
-        index = Maze.coordinateToIndex(p)
+        index = Maze.coordinateToIndex(self, p)
         name = a.name
         # the agent is not on the circle, move onto the circle
-        if a.ifOnCircle is False:
 
-            # feasible directions
-            feasibleD = [0, 1, 2, 3, 4]
-            if p[0] == 0 or p[0] == 100 or p[1] == 0 or p[1] == 100:
-                feasibleD = Maze.getFeasibleDirection(p)
+        # feasible directions
+        direction = [0, 1, 2, 3, 4]
+        if p[0] == 0 or p[0] == 100 or p[1] == 0 or p[1] == 100:
+            direction = Maze.getFeasibleDirection(self, p)
 
-            direction = feasibleD
-            value = Maze.getQvalueInfo(name, index, direction)
-            pInfo = Maze.getPositionInfo(index, direction)
-            min_value = np.min(value) - 10
-            while True:
-                max_value = np.max(value)
-                for i in range(len(direction)):
-                    if value[i] == max_value:
-                        if direction[i] == 0:
-                            return 0
+        value = Maze.getQvalueInfo(self, name, index, direction)
+        pInfo = Maze.getPositionInfo(self, index, direction)
+        min_value = np.min(value) - 10
+        while True:
+            max_value = np.max(value)
+            for i in range(len(direction)):
+                if value[i] == max_value:
+                    if direction[i] == 0:
+                        return 0
+                    else:
+                        if pInfo[i] == 0:
+                            return direction[i]
                         else:
-                            if pInfo[i] == 0:
-                                return direction[i]
-                            else:
-                                value[i] = min_value
+                            value[i] = min_value
 
     def getRandomMove(self, a):
+        p = a.position
+        index = Maze.coordinateToIndex(self, p)
+        name = a.name
+
+        # feasible directions
+        direction = [0, 1, 2, 3, 4]
+        if p[0] == 0 or p[0] == 100 or p[1] == 0 or p[1] == 100:
+            direction = Maze.getFeasibleDirection(self, p)
+        
         while True:
             action = int(np.random.rand() * 5)
-            index = Maze.coordinateToIndex(a.position)
-            pInfo = Maze.getPositionInfo(index)
+            pInfo = Maze.getPositionInfo(self, index, direction)
             if action == 0:
                 return 0
-            elif pInfo[action] == 0: # the position has not been occupied
+            elif pInfo[action] == 0:  # the position has not been occupied
                 return action
 
     # use epsilon-greedy algorithm
@@ -157,13 +161,10 @@ class Maze:
         else:
             return Maze.getRandomMove(a)
 
-
-
-    def setIR(self): # set internal reward
+    def setIR(self):  # set internal reward
         self.IR_table = 0
 
-
-    def checkArrival(self, i): #check whether the agent has arrived at any goal // return number represent goal_index
+    def checkArrival(self, i):  # check whether the agent has arrived at any goal // return number represent goal_index
         a = self.agent[i]
         if a.position not in self.gp:
             return -1
@@ -211,25 +212,20 @@ class Maze:
                         self.Q_table[a.name][index1[0]][index1[1]][action1] = value1[action1] + alpha * (
                                 gamma * value2[action2] + self.IR_table[agent_index][goal_index] - value1[action1])
 
-
                 if self.num_arrival == num_agents:
                     break
 
     def getPayoff(self, agent):
         a = 0
 
-    def outcome(self): # output outcome
+    def outcome(self):  # output outcome
         a = 0
-
-
-
-
 
 
 if __name__ == '__main__':
     shape = (3, 8)
     num = 2
-    epsilon = 0.7
+    epsilon = 0.3
     gamma = 0.1
     alpha = 0.1
     AgentPosition = []
