@@ -28,6 +28,10 @@ class Maze:
 
         self.IR_table = np.zeros((self.num_agents, self.num_goals), dtype=int)
 
+        self.min_steps = np.zeros((self.num_agents, 1), dtype=int)
+
+        self.strategy = np.zeros((self.num_agents, 1), dtype=int)
+
         self.num_arrival = 0
 
     def coordinateToIndex(self, c):
@@ -144,7 +148,7 @@ class Maze:
         direction = [0, 1, 2, 3, 4]
         if p[0] == 0 or p[0] == 100 or p[1] == 0 or p[1] == 100:
             direction = Maze.getFeasibleDirection(self, p)
-        
+
         while True:
             action = int(np.random.rand() * 5)
             pInfo = Maze.getPositionInfo(self, index, direction)
@@ -185,9 +189,15 @@ class Maze:
                 a = self.agent[agent_index]
                 a.position = self.ap[agent_index]
 
+            steps = 0
+
             while True:
                 for agent_index in range(num_agents):
                     a = self.agent[agent_index]
+
+                    if a.ifArrive is True: # the agent has arrived at the goal
+                        continue
+
                     index1 = self.coordinateToIndex(a.position)
                     value1 = self.Q_table[a.name][index1[0]][index1[1]]
                     action1 = self.selectAction(a)
@@ -203,6 +213,8 @@ class Maze:
 
                     if goal_index >= 0:
                         a.ifArrive = True
+                        if steps < self.min_steps[agent_index]:
+                            self.min_steps[agent_index] = steps
 
                     if a.ifArrive is False:
                         self.Q_table[a.name][index1[0]][index1[1]][action1] = value1[action1] + alpha * (
@@ -212,14 +224,25 @@ class Maze:
                         self.Q_table[a.name][index1[0]][index1[1]][action1] = value1[action1] + alpha * (
                                 gamma * value2[action2] + self.IR_table[agent_index][goal_index] - value1[action1])
 
+                    steps += 1
+
                 if self.num_arrival == num_agents:
                     break
 
-    def getPayoff(self, agent):
+    def calIR(self, agent):
         a = 0
 
     def outcome(self):  # output outcome
-        a = 0
+        for i in range(self.num_agents):
+            a = self.agent[i]
+            while a.position not in self.gp:
+                index = self.coordinateToIndex(a.position)
+                action = np.argmax(self.Q_table[a.name][index[0]][index[1]])
+                np.append(self.strategy[i], action)
+                a.move(action)
+
+        for i in range(self.num_agents):
+            print(self.strategy[i])
 
 
 if __name__ == '__main__':
