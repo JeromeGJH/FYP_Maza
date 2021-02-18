@@ -35,10 +35,10 @@ class Maze:
         self.num_arrival = 0
 
     def coordinateToIndex(self, c):
-        return [self.shape[1] - c[1], c[0]]
+        return [self.shape[0] - c[1], c[0] - 1]
 
     def IndexToCoordinate(self, i):
-        return [i[1], self.shape[1] - i[0]]
+        return [i[1] + 1, self.shape[0] - i[0]]
 
     def initAgents(self):
         for i in range(self.num_agents):
