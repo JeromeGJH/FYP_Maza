@@ -4,7 +4,7 @@ from agent import *
 
 
 class Maze:
-    def __init__(self, num, learning_rate=0.1, gamma=0.9, memory_size=5000, epsilon=0.1, shape=(3, 8), AgentP=[],
+    def __init__(self, num, learning_rate=0.1, gamma=0.9, memory_size=5000, epsilon=0.1, eta = 0.1, shape=(3, 8), AgentP=[],
                  GoalP=[], WallP=[]):
         self.env = np.array(shape[0], shape[1])
         self.shape = shape
@@ -14,6 +14,7 @@ class Maze:
         self.alpha = learning_rate
         self.gamma = gamma
         self.epsilon = epsilon
+        self.eta = eta
 
         self.agent = []
         self.ap = AgentP
@@ -24,11 +25,13 @@ class Maze:
         Maze.initGoals(self)
         Maze.initWall(self)
 
+        self.goal_bid = np.zeros((self.num_agents,self.num_goals), dtype=int)
+
         self.Q_table = np.zeros((self.num_agents, shape[0], shape[1], 5), dtype=int)
 
         self.IR_table = np.zeros((self.num_agents, self.num_goals), dtype=int)
 
-        self.min_steps = np.zeros((self.num_agents, 1), dtype=int)
+        self.min_steps = np.zeros((self.num_agents, self.num_goals), dtype=int)
 
         self.strategy = np.zeros((self.num_agents, 1), dtype=int)
 
@@ -55,7 +58,7 @@ class Maze:
             p = Maze.coordinateToIndex(self.wp[i])
             self.env[p[0]][p[1]] = -1
 
-    # get the information of position around the agent没写完
+    # get the information of position around the agent
     def getPositionInfo(self, index, direction):
         pInfo = np.array([])
         if 0 in direction:
@@ -175,13 +178,22 @@ class Maze:
         else:
             return self.gp.index(a.position)
 
+
+    def selectGoal(self, i):
+        a = self.agent[i]
+        e = np.random.rand()
+        if e > self.eta:
+            a.goal = np.argmax(self.goal_bid[i])
+        else:
+            a.goal = np.random.randint(self.num_goals)
+
     def train(self):
         gamma = self.gamma
         alpha = self.alpha
 
         num_agents = self.num_agents
-
-        for step_index1 in range(1000):
+        step_index1 = 1
+        while step_index1 <= 30000:
             if step_index1 % 100 == 0 and self.epsilon > 0:
                 self.epsilon -= 0.01
 
@@ -191,7 +203,7 @@ class Maze:
 
             steps = 0
 
-            while True:
+            while steps < 100:
                 for agent_index in range(num_agents):
                     a = self.agent[agent_index]
 
@@ -213,8 +225,19 @@ class Maze:
 
                     if goal_index >= 0:
                         a.ifArrive = True
-                        if steps < self.min_steps[agent_index]:
-                            self.min_steps[agent_index] = steps
+                        if steps < self.min_steps[agent_index][a.goal]:
+                            self.min_steps[agent_index][a.goal] = steps
+
+                        minS = steps
+                        for i in range(self.num_agents):
+                            if self.min_steps[i][a.goal] < minS:
+                                minS = self.min_steps[i][a.goal]
+
+                        bid = self.goal_bid[agent_index][a.goal]
+                        if minS < steps:
+                            self.goal_bid[agent_index][a.goal] = bid * (step_index1 - 1) / step_index1
+                        else:
+                            self.goal_bid[agent_index][a.goal] = bid * (step_index1 - 1) / step_index1 + minS / step_index1
 
                     if a.ifArrive is False:
                         self.Q_table[a.name][index1[0]][index1[1]][action1] = value1[action1] + alpha * (
@@ -228,6 +251,8 @@ class Maze:
 
                 if self.num_arrival == num_agents:
                     break
+
+            step_index1 += 1
 
     def calIR(self, agent):
         a = 0
